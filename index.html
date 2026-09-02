@@ -108,17 +108,20 @@
 
   <!-- ===== HALAMAN HARIAN ===== -->
   <section class="page active" id="pageHarian">
-    <div class="datebar">
-      <button onclick="gantiHari(-1)">◀</button>
-      <div class="dt">
-        <div class="dow" id="dowLabel"></div>
-        <div class="tgl" id="tglLabel"></div>
+    <div id="harianBox">
+      <div class="datebar">
+        <button onclick="gantiHari(-1)">◀</button>
+        <div class="dt">
+          <div class="dow" id="dowLabel"></div>
+          <div class="tgl" id="tglLabel"></div>
+        </div>
+        <button onclick="gantiHari(1)">▶</button>
       </div>
-      <button onclick="gantiHari(1)">▶</button>
+      <div class="daysum" id="daySum"></div>
+      <div id="dayList"></div>
     </div>
-    <div class="daysum" id="daySum"></div>
-    <div id="dayList"></div>
     <div class="btns">
+      <button class="wa" onclick="shareWADay()">📤 Share WA (Hari Ini)</button>
       <button class="danger" onclick="resetDay()">🗑 Hapus Semua Foto (Hari Ini)</button>
     </div>
   </section>
@@ -184,10 +187,7 @@ const TASKS = [
  {no:'',  group:false, tugas:'', ket:'Lantai', hari:'Senin & Kamis', days:[1,4]},
  {no:'4', group:true,  tugas:'Buang Sampah Aqua & OTB', ket:'di TPS', hari:'Selasa, Kamis, Sabtu', days:[2,4,6]},
  {no:'',  group:false, tugas:'', ket:'Tambahan', hari:'Sesuai kebutuhan', days:null},
- {no:'5', group:true,  tugas:'Cuci Mobil', ket:'Avanza', hari:'Jumat', days:[5]},
- {no:'',  group:false, tugas:'', ket:'Innova', hari:'Sabtu', days:[6]},
- {no:'',  group:false, tugas:'', ket:'Tambahan', hari:'Sesuai kebutuhan', days:null},
- {no:'6', group:true,  tugas:'Lainnya', ket:'Bila diperlukan', hari:'Tidak ditentukan', days:null},
+ {no:'5', group:true,  tugas:'Lainnya', ket:'Bila diperlukan', hari:'Tidak ditentukan', days:null},
 ];
 const BULAN = ['Januari','Februari','Maret','April','Mei','Juni','Juli','Agustus','September','Oktober','November','Desember'];
 const NAMAHARI = ['Minggu','Senin','Selasa','Rabu','Kamis','Jumat','Sabtu'];
@@ -434,6 +434,33 @@ async function shareWA(){
     }
   }catch(e){ if(e && e.name==='AbortError') return; }
   window.open('https://wa.me/?text='+encodeURIComponent(ringkasanText()), '_blank');
+}
+function ringkasanTextDay(){
+  const dw = new Date(Y, M, D).getDay();
+  let sched = 0, done = 0;
+  TASKS.forEach((tk, r) => {
+    if(tk.days && tk.days.includes(dw)){
+      sched++;
+      if(photos[r+'-'+D]) done++;
+    }
+  });
+  const nama = document.getElementById('inpPetugas').value.trim() || '-';
+  return '*CHECKLIST TUGAS HARIAN OB*\nPetugas: '+nama+'\nTanggal: '+D+' '+BULAN[M]+' '+Y+' ('+NAMAHARI[dw]+')\nBukti foto terisi: '+done+' dari '+sched+' jadwal';
+}
+async function shareWADay(){
+  try{
+    await ensureH2C();
+    toast('Membuat gambar rekap hari ini...');
+    const el = document.getElementById('harianBox');
+    const canvas = await html2canvas(el, {scale:3, backgroundColor:'#ffffff'});
+    const blob = await new Promise(res => canvas.toBlob(res, 'image/png'));
+    const file = new File([blob], 'Checklist_OB_'+D+'_'+BULAN[M]+'_'+Y+'.png', {type:'image/png'});
+    if(navigator.canShare && navigator.canShare({files:[file]})){
+      await navigator.share({files:[file], title:'Checklist Tugas OB', text: ringkasanTextDay()});
+      return;
+    }
+  }catch(e){ if(e && e.name==='AbortError') return; }
+  window.open('https://wa.me/?text='+encodeURIComponent(ringkasanTextDay()), '_blank');
 }
 const ADMIN_PASSWORD = 'admin321';
 function checkAdminPassword(){
